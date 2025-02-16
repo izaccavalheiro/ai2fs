@@ -56,21 +56,38 @@ This will:
 
 ### Input Format
 
-The input file should contain path markers starting with `//` followed by the file path. Everything between two path markers becomes the content of the file:
+The input file should contain path markers followed by the file path. Everything between two path markers becomes the content of the file. Supported markers include:
+
+- `//` (C-style comments)
+- `#` (Shell, Python, Ruby comments)
+- `-->` or `->` (Arrow notation)
+- `>` (Markdown-style)
+- `=>` (Alternative arrow)
+- `[` (Bracket notation)
+- `-` (Dash/hyphen)
+- `***` or `---` (Markdown separators)
+- `##` (Alternative hash)
+
+Examples of valid path markers:
 
 ```
 // app/src/main.js
 console.log('Hello World');
 
-// app/src/utils.js
+# app/src/utils.js
 function helper() {
     return true;
 }
 
-// app/styles/main.css
+--> app/styles/main.css
 body {
     margin: 0;
     padding: 0;
+}
+
+[ app/components/Button.tsx ]
+const Button = () => {
+    return <button>Click me</button>;
 }
 ```
 
