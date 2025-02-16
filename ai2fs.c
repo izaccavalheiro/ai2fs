@@ -3,26 +3,43 @@
  * Version: 1.0.0
  * 
  * Description:
- * A command-line utility that processes text output from AI providers and generates
- * a file system structure based on path markers in the text. It looks for lines
- * starting with '//' followed by a file path, and creates the corresponding
- * files and directories.
+ * A command-line utility that processes text output from AI assistants and generates
+ * a file system structure based on path markers in the text. The program recognizes
+ * various marker styles commonly used in programming and documentation to indicate
+ * file paths, and creates the corresponding files and directory structure.
+ * 
+ * Supported path markers:
+ * - // (C-style comments)     Example: // path/to/file.js
+ * - #  (Shell/Python comments)  Example: # path/to/file.py
+ * - --> or -> (Arrow notation)  Example: --> path/to/file.tsx
+ * - >  (Markdown-style)      Example: > path/to/file.md
+ * - => (Alternative arrow)    Example: => path/to/file.html
+ * - [  (Bracket notation)    Example: [ path/to/file.css ]
+ * - -  (Dash/hyphen)       Example: - path/to/file.json
+ * - *** or --- (MD separators)   Example: *** path/to/file.yml
+ * - ## (Alternative hash)    Example: ## path/to/file.config
  * 
  * Features:
- * - Creates a complete directory structure from path markers
+ * - Flexible path marker recognition
+ * - Creates complete directory structures
  * - Supports any file extension
  * - Places all generated files in a 'generated-code' root folder
  * - Preserves file content formatting and whitespace
  * - Handles both Unix and Windows-style paths
+ * - No external dependencies
  * 
  * Usage: ai2fs <input_file>
+ * 
+ * Output Structure:
+ * generated-code/
+ * └── [maintains original path structure]
  * 
  * Example input format:
  * // path/to/file.ext
  * Content for file.ext
  * More content...
  * 
- * // another/path/file.txt
+ * # another/path/file.txt
  * Content for another file
  * 
  * Author: Izac Cavalheiro
@@ -57,21 +74,42 @@ void trim(char *str) {
   end[1] = '\0';
 }
 
-// Function to check if a line starts with // and contains a valid path
+// Define supported path markers
+#define MAX_MARKER_LENGTH 4
+static const char *PATH_MARKERS[] = {
+  "//", "#", "-->", "->", ">", "=>", "[", "-", "***", "---", "##",
+  NULL  // Terminator
+};
+
+// Function to check if a line starts with a supported marker and contains a valid path
 int is_path_line(const char *line) {
   char trimmed[MAX_LINE_LENGTH];
   strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
   trimmed[MAX_LINE_LENGTH - 1] = '\0';
   trim(trimmed);
   
-  // Must start with //
-  if (strncmp(trimmed, "//", 2) != 0) return 0;
+  // Empty lines are not path lines
+  if (trimmed[0] == '\0') return 0;
   
-  // Skip // and spaces
-  const char *path_start = trimmed + 2;
+  // Check for any of our supported markers
+  const char **marker = PATH_MARKERS;
+  const char *path_start = NULL;
+  
+  while (*marker != NULL) {
+    if (strncmp(trimmed, *marker, strlen(*marker)) == 0) {
+      path_start = trimmed + strlen(*marker);
+      break;
+    }
+    marker++;
+  }
+  
+  // If no marker found, not a path line
+  if (path_start == NULL) return 0;
+  
+  // Skip whitespace after marker
   while(isspace((unsigned char)*path_start)) path_start++;
   
-  // Must have content after //
+  // Must have content after marker
   if (*path_start == '\0') return 0;
   
   // Must contain at least one / in the path
@@ -93,14 +131,35 @@ int is_path_line(const char *line) {
   return 0;
 }
 
-// Function to extract the path from a comment line
+// Function to extract the path from a marker line
 void extract_path(const char *line, char *path) {
-  // Skip // and whitespace
-  const char *start = line + 2;
-  while(isspace((unsigned char)*start)) start++;
+  char trimmed[MAX_LINE_LENGTH];
+  strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
+  trimmed[MAX_LINE_LENGTH - 1] = '\0';
+  trim(trimmed);
+  
+  // Find which marker was used
+  const char **marker = PATH_MARKERS;
+  const char *path_start = NULL;
+  
+  while (*marker != NULL) {
+    if (strncmp(trimmed, *marker, strlen(*marker)) == 0) {
+      path_start = trimmed + strlen(*marker);
+      break;
+    }
+    marker++;
+  }
+  
+  if (path_start == NULL) {
+    path[0] = '\0';
+    return;  // Should never happen as we checked in is_path_line
+  }
+  
+  // Skip whitespace after marker
+  while(isspace((unsigned char)*path_start)) path_start++;
   
   // Copy the path
-  strncpy(path, start, MAX_PATH_LENGTH - 1);
+  strncpy(path, path_start, MAX_PATH_LENGTH - 1);
   path[MAX_PATH_LENGTH - 1] = '\0';
   trim(path);
 }
