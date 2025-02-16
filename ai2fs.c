@@ -63,6 +63,13 @@
 #define ROOT_FOLDER "generated-code"
 #define MAX_LINE_LENGTH 4096
 #define MAX_PATH_LENGTH 256
+#define MAX_MARKER_LENGTH 4
+
+// Path markers for actual file creation
+static const char *PATH_MARKERS[] = {
+  "//", "#", "-->", "->", ">", "=>", "[", "-", "***", "---", "##",
+  NULL  // Terminator
+};
 
 // Function to trim whitespace from both ends of a string
 void trim(char *str) {
@@ -80,12 +87,120 @@ void trim(char *str) {
   end[1] = '\0';
 }
 
-// Define supported path markers
-#define MAX_MARKER_LENGTH 4
-static const char *PATH_MARKERS[] = {
-  "//", "#", "-->", "->", ">", "=>", "[", "-", "***", "---", "##",
-  NULL  // Terminator
+// Function declarations
+void trim(char *str);
+int is_directory_preview(const char *line);
+int is_comment_block_marker(const char *line);
+int is_file_listing(const char *line);
+int is_end_of_preview(const char *line, int in_preview_section);
+int is_path_line(const char *line);
+void extract_path(const char *line, char *path);
+void create_directories(const char *path);
+
+// Common directory preview markers
+static const char *DIRECTORY_PREVIEW_MARKERS[] = {
+  "Directory structure:",
+  "Folder structure:",
+  "Project structure:",
+  "File structure:",
+  "Structure:",
+  "├──",
+  "└──",
+  "│",
+  "|--",
+  "+--",
+  "```",  // Common markdown code block
+  NULL
 };
+
+// Common comment block markers
+static const char *COMMENT_BLOCK_MARKERS[] = {
+  "/*",
+  "*/", 
+  "'''",
+  "\"\"\"",
+  "<!--",
+  "-->",
+  NULL
+};
+
+// Function to check if we're in a directory preview section
+int is_directory_preview(const char *line) {
+  char trimmed[MAX_LINE_LENGTH];
+  strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
+  trimmed[MAX_LINE_LENGTH - 1] = '\0';
+  trim(trimmed);
+  
+  // Check for common directory tree characters
+  for (const char **marker = DIRECTORY_PREVIEW_MARKERS; *marker != NULL; marker++) {
+    if (strstr(trimmed, *marker) != NULL) {
+      return 1;
+    }
+  }
+  
+  return 0;
+}
+
+// Function to check if a line is part of a comment block
+int is_comment_block_marker(const char *line) {
+  char trimmed[MAX_LINE_LENGTH];
+  strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
+  trimmed[MAX_LINE_LENGTH - 1] = '\0';
+  trim(trimmed);
+  
+  for (const char **marker = COMMENT_BLOCK_MARKERS; *marker != NULL; marker++) {
+    if (strstr(trimmed, *marker) != NULL) {
+      return 1;
+    }
+  }
+  
+  return 0;
+}
+
+// Function to check if line looks like a file/folder listing
+int is_file_listing(const char *line) {
+  char trimmed[MAX_LINE_LENGTH];
+  strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
+  trimmed[MAX_LINE_LENGTH - 1] = '\0';
+  trim(trimmed);
+  
+  // Check for common patterns in directory listings
+  if (strstr(trimmed, "drwx") != NULL ||   // Unix ls output
+    strstr(trimmed, "<DIR>") != NULL ||  // Windows dir output
+    strstr(trimmed, "Mode") != NULL ||   // PowerShell output
+    strstr(trimmed, "bytes") != NULL ||  // Common size indicator
+    strstr(trimmed, "└──") != NULL ||    // Tree view indicators
+    strstr(trimmed, "├──") != NULL ||
+    strstr(trimmed, "|--") != NULL ||
+    strstr(trimmed, "+--") != NULL) {
+    return 1;
+  }
+  
+  return 0;
+}
+
+// Function to check if line indicates end of preview section
+int is_end_of_preview(const char *line, int in_preview_section) {
+  char trimmed[MAX_LINE_LENGTH];
+  strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
+  trimmed[MAX_LINE_LENGTH - 1] = '\0';
+  trim(trimmed);
+  
+  // If we're in a preview section and encounter a valid path marker,
+  // this indicates the end of the preview
+  if (in_preview_section) {
+    // Check if this is a valid path line (without the directory tree characters)
+    if (!is_directory_preview(line) && !is_file_listing(line)) {
+      for (const char **marker = PATH_MARKERS; *marker != NULL; marker++) {
+        if (strncmp(trimmed, *marker, strlen(*marker)) == 0) {
+          return 1;
+        }
+      }
+    }
+  }
+  
+  return 0;
+}
 
 // Function to check if a line starts with a supported marker and contains a valid path
 int is_path_line(const char *line) {
@@ -222,7 +337,32 @@ int main(int argc, char *argv[]) {
   size_t content_size = 0;
   size_t content_capacity = 0;
   
+  int in_preview_section = 0;
+  int in_comment_block = 0;
+  
   while (fgets(line, sizeof(line), input_file)) {
+    // Check if we're entering/leaving a comment block
+    if (is_comment_block_marker(line)) {
+      in_comment_block = !in_comment_block;
+      continue;
+    }
+    
+    // Check for directory preview section start
+    if (!in_preview_section && is_directory_preview(line)) {
+      in_preview_section = 1;
+      continue;
+    }
+    
+    // Check for directory preview section end
+    if (in_preview_section && is_end_of_preview(line, in_preview_section)) {
+      in_preview_section = 0;
+    }
+    
+    // Skip if we're in a preview section or comment block
+    if (in_preview_section || in_comment_block) {
+      continue;
+    }
+    
     // Check if this line is a path marker
     if (is_path_line(line)) {
       // If we were collecting content, save it
