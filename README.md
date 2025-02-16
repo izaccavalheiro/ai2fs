@@ -4,79 +4,82 @@ Command-line tool that converts AI-generated code into a file system structure. 
 
 ## Features
 
-### Path Marker Recognition
-- Supports multiple marker styles:
+### Smart Path Detection
+- Supports 11 different path marker styles:
   ```
-  // path/to/file.js          (C-style comments)
-  # path/to/file.py           (Shell/Python comments)
-  --> path/to/file.tsx        (Arrow notation)
-  -> path/to/file.html        (Short arrow)
-  > path/to/file.md          (Markdown-style)
-  => path/to/file.css        (Alternative arrow)
-  [ path/to/file.json ]      (Bracket notation)
-  - path/to/file.yml         (Dash/hyphen)
-  *** path/to/file.config    (Markdown separator)
-  ## path/to/file.ts         (Alternative hash)
+  // src/app.js              (C-style comments)
+  # lib/helpers.py           (Shell/Python comments)
+  --> components/Button.tsx  (Arrow notation)
+  -> styles/main.css        (Short arrow)
+  => utils/helpers.js       (Alternative arrow)
+  > docs/README.md          (Markdown-style)
+  [ config/settings.json ]  (Bracket notation)
+  - schema/types.graphql    (Dash/hyphen)
+  *** config/.env           (Asterisk separator)
+  --- docker-compose.yml    (Dash separator)
+  ## tests/test.spec.ts     (Double hash)
   ```
 
-### Smart Directory Structure Handling
-- Creates files in both root and nested directories:
-  ```
-  // config.json              (Root file)
-  // src/app.js              (Nested file)
-  // src/components/Button.tsx (Deeply nested file)
-  ```
-- Automatically creates all necessary parent directories
+### Intelligent Structure Handling
+- Creates full directory structures automatically
+- Supports files in root level and nested directories
+- Creates all parent directories as needed
 - Places all generated files in an isolated `generated-code` folder
 - Preserves original directory structure
 
-### Intelligent Preview Detection
-- Automatically skips directory structure previews:
+### Preview Detection
+- Automatically skips common directory previews:
   ```
-  Project structure:
-  ├── src/
-  │   ├── components/
-  │   └── utils/
-  └── public/
+  src/
+  ├── components/
+  │   └── Button.tsx
+  └── utils/
+      └── helpers.js
   ```
-- Ignores tree-view diagrams and file listings
-- Detects comment blocks and documentation sections
-- Automatically resumes file creation after preview sections
+- Ignores tree-view lines containing:
+  - ├── (T-shaped branch)
+  - └── (L-shaped branch)
+  - │   (Vertical line)
+  - |-- (ASCII-style branch)
 
-### File Content Handling
-- Preserves exact content formatting and whitespace
+### Content Management
+- Preserves exact file content formatting
+- Maintains proper whitespace and indentation
 - Supports any file extension
-- Handles both Unix and Windows-style paths
-- Maintains file content exactly as provided
+- Handles large files through dynamic buffer allocation
+- Protects against memory issues with proper allocation checks
 
-### Implementation Details
-- No external dependencies
-- Lightweight and fast
-- Cross-platform compatible
-- Simple command-line interface
+### Error Handling
+- Provides clear error messages for:
+  - File creation issues
+  - Permission problems
+  - Memory allocation failures
+  - Invalid input
+- Safe directory creation with proper permissions
+- Memory leak prevention through proper cleanup
+
+### Cross-Platform Support
+- Works on both Unix and Windows systems
+- Handles both forward slashes (/) and backslashes (\\)
+- Creates directories with appropriate system permissions
+- Uses platform-specific directory creation commands
 
 ## Installation
 
 ### Prerequisites
-
 - GCC or any C compiler
 - Make (optional, for easier building)
 
 ### Building from source
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/izaccavalheiro/ai2fs.git
+# Clone the repository
+git clone https://github.com/yourusername/ai2fs.git
 cd ai2fs
-```
 
-2. Compile the program:
-```bash
+# Compile
 gcc -o ai2fs ai2fs.c
-```
 
-3. (Optional) Install system-wide:
-```bash
+# Optional: Install system-wide
 sudo cp ai2fs /usr/local/bin/
 ```
 
@@ -87,22 +90,12 @@ Basic usage:
 ai2fs <input_file>
 ```
 
-### Example Input File
+### Input File Format
+
+Your input file can contain any combination of supported path markers followed by the file content. Here's an example:
 
 ```
-// Project structure preview (automatically skipped)
-src/
-  ├── components/
-  └── utils/
-
-// First we'll create our configuration
-// config.json
-{
-  "name": "my-app",
-  "version": "1.0.0"
-}
-
-// Now let's create the main component
+// First component
 // src/components/Button.tsx
 import React from 'react';
 
@@ -110,52 +103,68 @@ export const Button = () => {
   return <button>Click me</button>;
 };
 
-# Create a utility function
-# src/utils/helpers.ts
-export const formatDate = (date: Date) => {
-  return date.toLocaleDateString();
-};
+# Python utility
+# utils/helpers.py
+def get_config():
+    return {
+        "debug": True
+    }
+
+[ Configuration file ]
+[ config/settings.json ]
+{
+  "name": "my-app",
+  "version": "1.0.0"
+}
 ```
 
-### Generated Output
+### Output Structure
 
+The program creates all files under a `generated-code` directory:
 ```
 generated-code/
-├── config.json
-└── src/
-    ├── components/
-    │   └── Button.tsx
-    └── utils/
-        └── helpers.ts
+├── src/
+│   └── components/
+│       └── Button.tsx
+├── utils/
+│   └── helpers.py
+└── config/
+    └── settings.json
 ```
 
-## Advanced Features
+## Examples
 
-### Comment Block Handling
-The program intelligently handles various comment block styles:
+### Basic File Creation
 ```
-/*
- * Project explanation
- */
-
-"""
-Python-style documentation
-"""
-
-<!--
-HTML/XML comments
--->
+// config.json
+{
+  "name": "my-app"
+}
 ```
 
-### Directory Listing Detection
-Automatically skips common directory listing formats:
+### Nested Directories
 ```
-drwxr-xr-x  src/
--rw-r--r--  package.json
+# src/utils/helpers.py
+def helper():
+    pass
+```
 
-Mode                 LastWriteTime         Length Name
-----                 -------------         ------ ----
-d-----         2/16/2024   3:24 PM                src
+### Multiple Styles
+```
+// Component file
+// src/components/Button.tsx
+import React from 'react';
+
+# Python file
+# utils/helpers.py
+def helper():
+    pass
+
+[ Config file ]
+[ config.json ]
+{
+  "name": "app"
+}
 ```
 
 ## Contributing
@@ -164,10 +173,31 @@ Contributions are welcome! Here are some ways you can contribute:
 
 1. Report bugs
 2. Suggest new features
-3. Submit pull requests
+3. Add support for new path markers
 4. Improve documentation
+5. Add more test cases
 
-Please feel free to create issues for bugs or feature requests.
+## Development
+
+### Adding New Path Markers
+Path markers are defined in the `PATH_MARKERS` array. To add a new marker:
+
+1. Add it to the array in `ai2fs.c`:
+```c
+static const char *PATH_MARKERS[] = {
+    "// ", "#  ", "-->", ...
+    "new-marker",  // Add your new marker here
+    NULL
+};
+```
+
+2. Test it with various inputs to ensure proper handling
+
+### Testing
+Create a test file with various path markers and run:
+```bash
+./ai2fs test-input.txt
+```
 
 ## License
 
@@ -177,6 +207,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you encounter any problems or have questions:
 
-1. Check the [Issues](https://github.com/izaccavalheiro/ai2fs/issues) page
+1. Check the [Issues](https://github.com/yourusername/ai2fs/issues) page
 2. Create a new issue if your problem isn't already listed
 3. Include sample input and expected output in bug reports
