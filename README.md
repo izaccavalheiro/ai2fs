@@ -4,12 +4,56 @@ Command-line tool that converts AI-generated code into a file system structure. 
 
 ## Features
 
-- Creates complete directory structures from path markers in text
-- Places all generated files in an isolated `generated-code` directory
+### Path Marker Recognition
+- Supports multiple marker styles:
+  ```
+  // path/to/file.js          (C-style comments)
+  # path/to/file.py           (Shell/Python comments)
+  --> path/to/file.tsx        (Arrow notation)
+  -> path/to/file.html        (Short arrow)
+  > path/to/file.md          (Markdown-style)
+  => path/to/file.css        (Alternative arrow)
+  [ path/to/file.json ]      (Bracket notation)
+  - path/to/file.yml         (Dash/hyphen)
+  *** path/to/file.config    (Markdown separator)
+  ## path/to/file.ts         (Alternative hash)
+  ```
+
+### Smart Directory Structure Handling
+- Creates files in both root and nested directories:
+  ```
+  // config.json              (Root file)
+  // src/app.js              (Nested file)
+  // src/components/Button.tsx (Deeply nested file)
+  ```
+- Automatically creates all necessary parent directories
+- Places all generated files in an isolated `generated-code` folder
+- Preserves original directory structure
+
+### Intelligent Preview Detection
+- Automatically skips directory structure previews:
+  ```
+  Project structure:
+  ├── src/
+  │   ├── components/
+  │   └── utils/
+  └── public/
+  ```
+- Ignores tree-view diagrams and file listings
+- Detects comment blocks and documentation sections
+- Automatically resumes file creation after preview sections
+
+### File Content Handling
+- Preserves exact content formatting and whitespace
 - Supports any file extension
-- Preserves file content formatting and whitespace
 - Handles both Unix and Windows-style paths
-- Simple and lightweight with no external dependencies
+- Maintains file content exactly as provided
+
+### Implementation Details
+- No external dependencies
+- Lightweight and fast
+- Cross-platform compatible
+- Simple command-line interface
 
 ## Installation
 
@@ -43,104 +87,76 @@ Basic usage:
 ai2fs <input_file>
 ```
 
-Example:
-```bash
-ai2fs paste.txt
-```
-
-This will:
-1. Create a `generated-code` directory in the current folder
-2. Parse the input file for path markers
-3. Create all necessary subdirectories
-4. Generate files with their corresponding content
-
-### Input Format
-
-The input file should contain path markers followed by the file path. Everything between two path markers becomes the content of the file. Supported markers include:
-
-- `//` (C-style comments)
-- `#` (Shell, Python, Ruby comments)
-- `-->` or `->` (Arrow notation)
-- `>` (Markdown-style)
-- `=>` (Alternative arrow)
-- `[` (Bracket notation)
-- `-` (Dash/hyphen)
-- `***` or `---` (Markdown separators)
-- `##` (Alternative hash)
-
-Examples of valid path markers:
+### Example Input File
 
 ```
-// app/src/main.js
-console.log('Hello World');
+// Project structure preview (automatically skipped)
+src/
+  ├── components/
+  └── utils/
 
-# app/src/utils.js
-function helper() {
-    return true;
+// First we'll create our configuration
+// config.json
+{
+  "name": "my-app",
+  "version": "1.0.0"
 }
 
---> app/styles/main.css
-body {
-    margin: 0;
-    padding: 0;
-}
+// Now let's create the main component
+// src/components/Button.tsx
+import React from 'react';
 
-[ app/components/Button.tsx ]
-const Button = () => {
-    return <button>Click me</button>;
-}
+export const Button = () => {
+  return <button>Click me</button>;
+};
+
+# Create a utility function
+# src/utils/helpers.ts
+export const formatDate = (date: Date) => {
+  return date.toLocaleDateString();
+};
 ```
 
-### Output Structure
-
-Given the above input, ai2fs will create:
+### Generated Output
 
 ```
 generated-code/
-├── app/
-│   ├── src/
-│   │   ├── main.js
-│   │   └── utils.js
-│   └── styles/
-│       └── main.css
+├── config.json
+└── src/
+    ├── components/
+    │   └── Button.tsx
+    └── utils/
+        └── helpers.ts
 ```
 
-## Examples
+## Advanced Features
 
-### Basic Example
-Input file `example.txt`:
+### Comment Block Handling
+The program intelligently handles various comment block styles:
 ```
-// project/src/index.js
-const express = require('express');
-const app = express();
+/*
+ * Project explanation
+ */
 
-// project/src/routes/users.js
-router.get('/users', (req, res) => {
-    res.send('Users route');
-});
-```
+"""
+Python-style documentation
+"""
 
-Run the command:
-```bash
-ai2fs example.txt
+<!--
+HTML/XML comments
+-->
 ```
 
-This creates:
+### Directory Listing Detection
+Automatically skips common directory listing formats:
 ```
-generated-code/
-└── project/
-    └── src/
-        ├── index.js
-        └── routes/
-            └── users.js
+drwxr-xr-x  src/
+-rw-r--r--  package.json
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----         2/16/2024   3:24 PM                src
 ```
-
-### Working with AI Providers
-
-1. Copy the code blocks from your AI chat/completion
-2. Paste them into a text file
-3. Run ai2fs on that file
-4. Find your generated code in the `generated-code` directory
 
 ## Contributing
 
@@ -153,22 +169,9 @@ Contributions are welcome! Here are some ways you can contribute:
 
 Please feel free to create issues for bugs or feature requests.
 
-### Development
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Inspired by the need to efficiently implement AI-generated code structures
-- Thanks to all contributors and users of the project
 
 ## Support
 
