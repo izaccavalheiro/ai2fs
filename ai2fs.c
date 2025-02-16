@@ -9,15 +9,20 @@
  * file paths, and creates the corresponding files and directory structure.
  * 
  * Supported path markers:
- * - // (C-style comments)     Example: // path/to/file.js
- * - #  (Shell/Python comments)  Example: # path/to/file.py
- * - --> or -> (Arrow notation)  Example: --> path/to/file.tsx
- * - >  (Markdown-style)      Example: > path/to/file.md
- * - => (Alternative arrow)    Example: => path/to/file.html
- * - [  (Bracket notation)    Example: [ path/to/file.css ]
- * - -  (Dash/hyphen)       Example: - path/to/file.json
- * - *** or --- (MD separators)   Example: *** path/to/file.yml
- * - ## (Alternative hash)    Example: ## path/to/file.config
+ * - // (C-style comments)     Examples: // main.js, // src/app.js
+ * - #  (Shell/Python comments)  Examples: # config.py, # lib/utils.py
+ * - --> or -> (Arrow notation)  Examples: --> index.tsx, --> components/Button.tsx
+ * - >  (Markdown-style)      Examples: > README.md, > docs/api.md
+ * - => (Alternative arrow)    Examples: => style.css, => css/main.css
+ * - [  (Bracket notation)    Examples: [ types.d.ts ], [ src/interfaces.ts ]
+ * - -  (Dash/hyphen)       Examples: - package.json, - config/dev.json
+ * - *** or --- (MD separators)   Examples: *** .env, *** config/.env.local
+ * - ## (Alternative hash)    Examples: ## tsconfig.json, ## src/routes.ts
+ * 
+ * Path Structure:
+ * - Can create files in root directory (e.g., main.js, README.md)
+ * - Can create files in subdirectories (e.g., src/app.js, lib/utils/helper.js)
+ * - All files must have an extension
  * 
  * Features:
  * - Flexible path marker recognition
@@ -32,15 +37,16 @@
  * 
  * Output Structure:
  * generated-code/
- * └── [maintains original path structure]
+ * ├── [files in root]
+ * └── [subdirectory structure]
  * 
  * Example input format:
- * // path/to/file.ext
- * Content for file.ext
- * More content...
+ * // main.js
+ * console.log('Root file');
  * 
- * # another/path/file.txt
- * Content for another file
+ * # src/utils.py
+ * def helper():
+ *   return True
  * 
  * Author: Izac Cavalheiro
  * License: MIT
@@ -111,9 +117,6 @@ int is_path_line(const char *line) {
   
   // Must have content after marker
   if (*path_start == '\0') return 0;
-  
-  // Must contain at least one / in the path
-  if (strchr(path_start, '/') == NULL) return 0;
   
   // Must contain a file extension (any characters after a dot)
   const char *last_dot = strrchr(path_start, '.');
