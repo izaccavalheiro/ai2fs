@@ -9,15 +9,15 @@
  * file paths, and creates the corresponding files and directory structure.
  * 
  * Supported path markers:
- * - // (C-style comments)     Examples: // main.js, // src/app.js
+ * - // (C-style comments)   Examples: // main.js, // src/app.js
  * - #  (Shell/Python comments)  Examples: # config.py, # lib/utils.py
  * - --> or -> (Arrow notation)  Examples: --> index.tsx, --> components/Button.tsx
- * - >  (Markdown-style)      Examples: > README.md, > docs/api.md
- * - => (Alternative arrow)    Examples: => style.css, => css/main.css
- * - [  (Bracket notation)    Examples: [ types.d.ts ], [ src/interfaces.ts ]
- * - -  (Dash/hyphen)       Examples: - package.json, - config/dev.json
+ * - >  (Markdown-style)  Examples: > README.md, > docs/api.md
+ * - => (Alternative arrow)  Examples: => style.css, => css/main.css
+ * - [  (Bracket notation)  Examples: [ types.d.ts ], [ src/interfaces.ts ]
+ * - -  (Dash/hyphen)   Examples: - package.json, - config/dev.json
  * - *** or --- (MD separators)   Examples: *** .env, *** config/.env.local
- * - ## (Alternative hash)    Examples: ## tsconfig.json, ## src/routes.ts
+ * - ## (Alternative hash)  Examples: ## tsconfig.json, ## src/routes.ts
  * 
  * Path Structure:
  * - Can create files in root directory (e.g., main.js, README.md)
@@ -59,234 +59,140 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+/* Constants */
 #define PROGRAM_NAME "ai2fs"
 #define ROOT_FOLDER "generated-code"
 #define MAX_LINE_LENGTH 4096
 #define MAX_PATH_LENGTH 256
-#define MAX_MARKER_LENGTH 4
 
-// Path markers for actual file creation
+/* Global variables */
 static const char *PATH_MARKERS[] = {
-  "//", "#", "-->", "->", ">", "=>", "[", "-", "***", "---", "##",
-  NULL  // Terminator
+  "// ", "#  ", "-->", "->", "=> ", "> ", "[ ", "- ", "***", "---", "## ",
+  NULL
 };
 
-// Function to trim whitespace from both ends of a string
-void trim(char *str) {
-  char *end;
-  
-  // Trim leading space
-  while(isspace((unsigned char)*str)) str++;
-  
-  if(*str == 0) return;
-  
-  // Trim trailing space
-  end = str + strlen(str) - 1;
-  while(end > str && isspace((unsigned char)*end)) end--;
-  
-  end[1] = '\0';
-}
-
-// Function declarations
+/* Function declarations */
 void trim(char *str);
-int is_directory_preview(const char *line);
-int is_comment_block_marker(const char *line);
-int is_file_listing(const char *line);
-int is_end_of_preview(const char *line, int in_preview_section);
 int is_path_line(const char *line);
 void extract_path(const char *line, char *path);
 void create_directories(const char *path);
 
-// Common directory preview markers
-static const char *DIRECTORY_PREVIEW_MARKERS[] = {
-  "Directory structure:",
-  "Folder structure:",
-  "Project structure:",
-  "File structure:",
-  "Structure:",
-  "├──",
-  "└──",
-  "│",
-  "|--",
-  "+--",
-  "```",  // Common markdown code block
-  NULL
-};
-
-// Common comment block markers
-static const char *COMMENT_BLOCK_MARKERS[] = {
-  "/*",
-  "*/", 
-  "'''",
-  "\"\"\"",
-  "<!--",
-  "-->",
-  NULL
-};
-
-// Function to check if we're in a directory preview section
-int is_directory_preview(const char *line) {
-  char trimmed[MAX_LINE_LENGTH];
-  strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
-  trimmed[MAX_LINE_LENGTH - 1] = '\0';
-  trim(trimmed);
+/* Function implementations */
+void trim(char *str) {
+  if (!str) return;
   
-  // Check for common directory tree characters
-  for (const char **marker = DIRECTORY_PREVIEW_MARKERS; *marker != NULL; marker++) {
-    if (strstr(trimmed, *marker) != NULL) {
-      return 1;
-    }
+  char *end;
+  
+  // Trim leading space
+  while (isspace((unsigned char)*str)) {
+    str++;
   }
   
-  return 0;
-}
-
-// Function to check if a line is part of a comment block
-int is_comment_block_marker(const char *line) {
-  char trimmed[MAX_LINE_LENGTH];
-  strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
-  trimmed[MAX_LINE_LENGTH - 1] = '\0';
-  trim(trimmed);
+  if (*str == 0) return;
   
-  for (const char **marker = COMMENT_BLOCK_MARKERS; *marker != NULL; marker++) {
-    if (strstr(trimmed, *marker) != NULL) {
-      return 1;
-    }
+  // Trim trailing space
+  end = str + strlen(str) - 1;
+  while (end > str && isspace((unsigned char)*end)) {
+    end--;
   }
   
-  return 0;
+  end[1] = '\0';
 }
 
-// Function to check if line looks like a file/folder listing
-int is_file_listing(const char *line) {
-  char trimmed[MAX_LINE_LENGTH];
-  strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
-  trimmed[MAX_LINE_LENGTH - 1] = '\0';
-  trim(trimmed);
-  
-  // Check for common patterns in directory listings
-  if (strstr(trimmed, "drwx") != NULL ||   // Unix ls output
-    strstr(trimmed, "<DIR>") != NULL ||  // Windows dir output
-    strstr(trimmed, "Mode") != NULL ||   // PowerShell output
-    strstr(trimmed, "bytes") != NULL ||  // Common size indicator
-    strstr(trimmed, "└──") != NULL ||    // Tree view indicators
-    strstr(trimmed, "├──") != NULL ||
-    strstr(trimmed, "|--") != NULL ||
-    strstr(trimmed, "+--") != NULL) {
-    return 1;
-  }
-  
-  return 0;
-}
-
-// Function to check if line indicates end of preview section
-int is_end_of_preview(const char *line, int in_preview_section) {
-  char trimmed[MAX_LINE_LENGTH];
-  strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
-  trimmed[MAX_LINE_LENGTH - 1] = '\0';
-  trim(trimmed);
-  
-  // If we're in a preview section and encounter a valid path marker,
-  // this indicates the end of the preview
-  if (in_preview_section) {
-    // Check if this is a valid path line (without the directory tree characters)
-    if (!is_directory_preview(line) && !is_file_listing(line)) {
-      for (const char **marker = PATH_MARKERS; *marker != NULL; marker++) {
-        if (strncmp(trimmed, *marker, strlen(*marker)) == 0) {
-          return 1;
-        }
-      }
-    }
-  }
-  
-  return 0;
-}
-
-// Function to check if a line starts with a supported marker and contains a valid path
 int is_path_line(const char *line) {
+  if (!line) return 0;
+  
   char trimmed[MAX_LINE_LENGTH];
   strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
   trimmed[MAX_LINE_LENGTH - 1] = '\0';
   trim(trimmed);
   
-  // Empty lines are not path lines
+  // Must not be empty
   if (trimmed[0] == '\0') return 0;
-  
-  // Check for any of our supported markers
-  const char **marker = PATH_MARKERS;
+
+  // Skip directory structure lines
+  if (strstr(trimmed, "├") || 
+    strstr(trimmed, "└") || 
+    strstr(trimmed, "│") ||
+    strstr(trimmed, "|--")) {
+    return 0;
+  }
+
+  // Check if line starts with any of our markers
+  const char **marker;
   const char *path_start = NULL;
   
-  while (*marker != NULL) {
-    if (strncmp(trimmed, *marker, strlen(*marker)) == 0) {
-      path_start = trimmed + strlen(*marker);
+  for (marker = PATH_MARKERS; *marker != NULL; marker++) {
+    size_t marker_len = strlen(*marker);
+    if (strncmp(trimmed, *marker, marker_len - 1) == 0) {
+      path_start = trimmed + (strchr(*marker, ' ') ? marker_len - 1 : marker_len);
       break;
     }
-    marker++;
   }
   
-  // If no marker found, not a path line
-  if (path_start == NULL) return 0;
-  
-  // Skip whitespace after marker
-  while(isspace((unsigned char)*path_start)) path_start++;
+  if (!path_start) return 0;
+
+  // Skip any remaining spaces after marker
+  while (isspace((unsigned char)*path_start)) {
+    path_start++;
+  }
   
   // Must have content after marker
   if (*path_start == '\0') return 0;
   
-  // Must contain a file extension (any characters after a dot)
+  // Must have a file extension
   const char *last_dot = strrchr(path_start, '.');
-  if (last_dot != NULL && *(last_dot + 1) != '\0') {
-    // Check that there are characters after the dot
-    const char *ext = last_dot + 1;
-    while (*ext != '\0') {
-      if (!isspace((unsigned char)*ext)) {
-        return 1;  // Found at least one non-space character after the dot
-      }
-      ext++;
-    }
-  }
-  
-  return 0;
+  return (last_dot && *(last_dot + 1) != '\0');
 }
 
-// Function to extract the path from a marker line
 void extract_path(const char *line, char *path) {
+  if (!line || !path) return;
+  
   char trimmed[MAX_LINE_LENGTH];
   strncpy(trimmed, line, MAX_LINE_LENGTH - 1);
   trimmed[MAX_LINE_LENGTH - 1] = '\0';
   trim(trimmed);
   
   // Find which marker was used
-  const char **marker = PATH_MARKERS;
+  const char **marker;
   const char *path_start = NULL;
   
-  while (*marker != NULL) {
-    if (strncmp(trimmed, *marker, strlen(*marker)) == 0) {
-      path_start = trimmed + strlen(*marker);
+  for (marker = PATH_MARKERS; *marker != NULL; marker++) {
+    size_t marker_len = strlen(*marker);
+    if (strncmp(trimmed, *marker, marker_len - 1) == 0) {
+      path_start = trimmed + (strchr(*marker, ' ') ? marker_len - 1 : marker_len);
       break;
     }
-    marker++;
   }
   
-  if (path_start == NULL) {
+  if (!path_start) {
     path[0] = '\0';
-    return;  // Should never happen as we checked in is_path_line
+    return;
   }
   
-  // Skip whitespace after marker
-  while(isspace((unsigned char)*path_start)) path_start++;
+  // Skip any remaining spaces
+  while (isspace((unsigned char)*path_start)) {
+    path_start++;
+  }
   
   // Copy the path
   strncpy(path, path_start, MAX_PATH_LENGTH - 1);
   path[MAX_PATH_LENGTH - 1] = '\0';
   trim(path);
+  
+  // Remove closing bracket if present
+  size_t len = strlen(path);
+  if (len > 0 && path[len - 1] == ']') {
+    path[len - 1] = '\0';
+    trim(path);
+  }
 }
 
-// Function to create directory structure for a file path
 void create_directories(const char *path) {
+  if (!path) return;
+  
   char temp[MAX_PATH_LENGTH];
-  char *p = NULL;
-  size_t len;
+  char *p;
   
   // First create the root folder
   #ifdef _WIN32
@@ -298,14 +204,9 @@ void create_directories(const char *path) {
   // Prepend root folder to path
   snprintf(temp, sizeof(temp), "%s/%s", ROOT_FOLDER, path);
   
-  len = strlen(temp);
-  if (temp[len - 1] == '/') {
-    temp[len - 1] = 0;
-  }
-  
   for (p = temp + 1; *p; p++) {
     if (*p == '/') {
-      *p = 0;
+      *p = '\0';
       #ifdef _WIN32
         _mkdir(temp);
       #else
@@ -322,8 +223,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   
-  printf("Root folder '%s' created.\n", ROOT_FOLDER);
-  
   FILE *input_file = fopen(argv[1], "r");
   if (!input_file) {
     perror("Error opening input file");
@@ -337,33 +236,9 @@ int main(int argc, char *argv[]) {
   size_t content_size = 0;
   size_t content_capacity = 0;
   
-  int in_preview_section = 0;
-  int in_comment_block = 0;
+  printf("Root folder '%s' created.\n", ROOT_FOLDER);
   
   while (fgets(line, sizeof(line), input_file)) {
-    // Check if we're entering/leaving a comment block
-    if (is_comment_block_marker(line)) {
-      in_comment_block = !in_comment_block;
-      continue;
-    }
-    
-    // Check for directory preview section start
-    if (!in_preview_section && is_directory_preview(line)) {
-      in_preview_section = 1;
-      continue;
-    }
-    
-    // Check for directory preview section end
-    if (in_preview_section && is_end_of_preview(line, in_preview_section)) {
-      in_preview_section = 0;
-    }
-    
-    // Skip if we're in a preview section or comment block
-    if (in_preview_section || in_comment_block) {
-      continue;
-    }
-    
-    // Check if this line is a path marker
     if (is_path_line(line)) {
       // If we were collecting content, save it
       if (output_file) {
@@ -380,7 +255,7 @@ int main(int argc, char *argv[]) {
       extract_path(line, current_path);
       create_directories(current_path);
       
-      // Open new file with root folder prepended
+      // Open new file
       char full_path[MAX_PATH_LENGTH];
       snprintf(full_path, sizeof(full_path), "%s/%s", ROOT_FOLDER, current_path);
       output_file = fopen(full_path, "w");
