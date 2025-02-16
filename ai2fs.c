@@ -25,7 +25,7 @@
  * // another/path/file.txt
  * Content for another file
  * 
- * Author: Generated with AI assistance
+ * Author: Izac Cavalheiro
  * License: MIT
  */
 
